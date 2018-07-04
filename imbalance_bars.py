@@ -22,7 +22,7 @@ def get_trade_hist(polo, currencypair, startiso, endiso):
 # Returns a series of bars.
 
 def imbalance_bars(df, counter_threshold,
-       T_EMA_span, b_EMA_span):
+       T_EMA_span, b_EMA_span, T_init):
     
     bars = []
     imbalance = 0
@@ -30,8 +30,7 @@ def imbalance_bars(df, counter_threshold,
     E_b_EMA_mult = 2/(b_EMA_span + 1)
     prev_rate = float(df['rate'].iloc[0])
     E_b_EMA = 0.5
-    T_EMA = 40
-    T = 40
+    T_EMA = T = T_init
     start_curr = df['date'].values[0]
     rate = open_curr = float(df['rate'].values[0])
     vol_curr = 0
@@ -90,10 +89,10 @@ def __main__(currencypair, start, end):
             'date', 'rate', 'tradeID', 'total']
         )
     print(df)
-    bars = imbalance_bars(df, 0.001, 10, 10)
+    bars = imbalance_bars(df, 0.001, 10, 10, 20)
     plt.plot(df['date'], [float(rate) for rate in df['rate']], 'r--')
     plt.plot(bars['start'], [float(open) for open in bars['open']], 'bs')
     plt.show()
 
 
-__main__('BTC_ETH', '2017-05-02T00:04:00', '2017-05-02T05:00:00')
+__main__('BTC_ETH', '2017-05-02T04:00:00', '2017-05-02T05:00:00')
