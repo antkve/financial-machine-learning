@@ -2,6 +2,7 @@ from poloniex import Poloniex
 import pandas as pd
 from numpy import sign
 from more_itertools import peekable
+import datetime
 import dateutil.parser as dp
 import matplotlib.pyplot as plt
 
@@ -17,12 +18,90 @@ def get_trade_hist(polo, currencypair, startiso, endiso):
     return pd.DataFrame(hist)
 
 
+class Bar:
+    def __init__(self, row):
+        self.open = self.high = self.low = row.rate
+        self.volume = 0
+        self.start = row.date
+    
+    def __dict:
+        return {key:value for key, value in self.__dict__.items() 
+                if not key.startswith('__') and not callable(key)}
+
+    def update(row):
+        if row.rate > self.high:
+            self.high = row.rate
+        elif row.rate < self.low:
+            self.low = row.rate
+        self.volume += float(row.amount)
+
+    def close(row):
+        self.close = row.rate
+        self.update(row)
+
+
+
+
+def time_bars(df, sep_secs):
+    bars = []
+    df_iter = peekable(df.itertuples())
+    bar = Bar(df_iter.peek())
+
+    open_rate = high = low = df['rate'][0]
+    while True:
+        row = next(df_iter)
+        
+        vol += float(row.amount)
+        if row.rate > high: high = row.rate 
+        elif row.rate < low: low = row.rate
+        
+        date = datetime.strptime(row.date, "%Y-%m-%d %H:%M:%s") 
+        if date > barstarttime + datetime.timedelta(seconds=sep_secs):
+            bar = {'start':barstarttime,
+                    'end':row.date,
+                    'open':open_rate,
+                    'high':high
+                    'close':row.rate,
+                    'volume':vol}
+            bars.append(bar)
+            vol = 0
+            try:
+                peeked = df_iter.peek()
+                open_rate, barstarttime = peeked.rate, peeked.date
+                high = low = open_rate
+            except StopIteration:
+                return pd.DataFrame(bars)
+
+
+
+def tick_bars(df, sep):
+    bars = []
+    df_iter = peekable(df.itertuples())
+    barstarttime = datetime.strptime(df['date'][0], "%Y-%m-%d %H:%M:%s")
+    open_rate = df['rate'][0]
+    while True:
+        row = next(df_iter)
+        vol += float(row.amount)
+        if ix > barstartix + sep:
+            bar = {'start':barstarttime,
+                    'end':row.date,
+                    'open':open_rate,
+                    'close':row.rate,
+                    'volume':vol}
+            bars.append(bar)
+            vol = 0
+            try:
+                open_rate = df_iter.peek().rate
+            except StopIteration:
+                return pd.DataFrame(bars)
+
+
 # Takes in a series of prices, a threshold for 
-# the imbalance counter, and a threshold for the imbalance.
-# Returns a series of bars.
+# the imbalance counter trigger, and the spans
+# for each EMA. Returns a DataFrame of bars.
 
 def imbalance_bars(df, counter_threshold,
-       T_EMA_span, b_EMA_span, T_init):
+       T_EMA_span, b_EMA_span):
     
     bars = []
     imbalance = 0
@@ -30,10 +109,10 @@ def imbalance_bars(df, counter_threshold,
     E_b_EMA_mult = 2/(b_EMA_span + 1)
     prev_rate = float(df['rate'].iloc[0])
     E_b_EMA = 0.5
-    T_EMA = T = T_init
-    start_curr = df['date'].values[0]
+    T_EMA = T = 20
+    start = df['date'].values[0]
     rate = open_curr = float(df['rate'].values[0])
-    vol_curr = 0
+    vol = 0
     diff = 0
     stop = False
 
@@ -43,7 +122,6 @@ def imbalance_bars(df, counter_threshold,
         try:
             row = next(df_iter)
         except StopIteration: return pd.DataFrame(bars)
-        print(row.date)
         diff = float(row.rate) - rate
         rate = float(row.rate)
         
@@ -53,29 +131,27 @@ def imbalance_bars(df, counter_threshold,
             b = 0
         
         imbalance += b
-        print(imbalance)
-        # Exponential MA of expected value of b
         E_b_EMA = ((1 + b)/2 - E_b_EMA) * E_b_EMA_mult + E_b_EMA
 
         
         T += 1
-        vol_curr += float(row.amount)
+        vol += float(row.amount)
 
         if abs(imbalance) > T_EMA * abs((2 * E_b_EMA - 1)):
-            bar = {'start':start_curr,
-                    'end':row.date,
+            bar = {'start':datetime.strptime(start, "%Y-%m-%d %H:%M:%s"),
+                    'end':datetime.strptime(row.date, "%Y-%m-%d %H:%M:%s")),
                     'span':T,
                     'open':open_curr,
                     'close':rate,
-                    'volume':vol_curr}
+                    'volume':vol}
             bars.append(bar)   
 
             # Initialize for next bar
 
             T_EMA = (T - T_EMA) * T_EMA_mult + T_EMA
             T = 0
-            vol_curr = 0
-            start_curr = df_iter.peek().date
+            vol = 0
+            start = df_iter.peek().date
             open_curr = df_iter.peek().rate
             imbalance = 0
             
@@ -90,9 +166,8 @@ def __main__(currencypair, start, end):
         )
     print(df)
     bars = imbalance_bars(df, 0.001, 10, 10, 20)
-    plt.plot(df['date'], [float(rate) for rate in df['rate']], 'r--')
-    plt.plot(bars['start'], [float(open) for open in bars['open']], 'bs')
+    plt.plot(df['date'], [float(rate) for rate in df['rate']], 'b')
+    plt.plot(bars['start'], [float(open) for open in bars['open']], 'r')
     plt.show()
 
-
-__main__('BTC_ETH', '2017-05-02T04:00:00', '2017-05-02T05:00:00')
+__main__('BTC_ETH', '2017-05-03T04:00:00', '2017-05-03T04:30:00')
