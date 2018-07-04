@@ -30,8 +30,8 @@ def imbalance_bars(df, counter_threshold,
     E_b_EMA_mult = 2/(b_EMA_span + 1)
     prev_rate = float(df['rate'].iloc[0])
     E_b_EMA = 0.5
-    T_EMA = 10
-    T = 10
+    T_EMA = 40
+    T = 40
     start_curr = df['date'].values[0]
     rate = open_curr = float(df['rate'].values[0])
     vol_curr = 0
@@ -54,6 +54,7 @@ def imbalance_bars(df, counter_threshold,
             b = 0
         
         imbalance += b
+        print(imbalance)
         # Exponential MA of expected value of b
         E_b_EMA = ((1 + b)/2 - E_b_EMA) * E_b_EMA_mult + E_b_EMA
 
@@ -91,9 +92,8 @@ def __main__(currencypair, start, end):
     print(df)
     bars = imbalance_bars(df, 0.001, 10, 10)
     plt.plot(df['date'], [float(rate) for rate in df['rate']], 'r--')
-    print(bars)
     plt.plot(bars['start'], [float(open) for open in bars['open']], 'bs')
     plt.show()
 
 
-__main__('BTC_ETH', '2017-05-02T04:04:00', '2017-05-02T04:05:00')
+__main__('BTC_ETH', '2017-05-02T00:04:00', '2017-05-02T05:00:00')
