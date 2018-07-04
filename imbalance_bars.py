@@ -6,6 +6,7 @@ import datetime as dt
 import dateutil.parser as dp
 import matplotlib.pyplot as plt
 import finance
+from matplotlib.finance import candlestick_ohlc
 
 
 def get_trade_hist(polo, currencypair, startiso, endiso):
@@ -22,46 +23,34 @@ def get_trade_hist(polo, currencypair, startiso, endiso):
 def time_bars(txs, start, sep_secs):
     txs_iter = peekable(iter(txs))
 
-    init_date = txs[0].date
     end_date = txs[-1].date
-    date = init_date
+    date = txs[0].date
+    bars = []
     while date < end_date: 
         date = date + dt.timedelta(seconds=sep_secs)
-        bar_dates.append(date)
-
-    bars = []
-    tx = next(txs_iter)
-
-    for end in bardates:
-
-        if tx.date > end:
-            continue
-
-        while tx.date < end:
-            bar.update(tx)
-            tx = next(txs_iter)
-        bar.close(tx)
-        bars.append(bar)
-        tx = next(txs_iter)
-        bar = Bar(tx)
-
-
-def tick_bars(df, sep):
-    df_iter = df.itertuples()
-
-    bars = []
-    bar = Bar(Transaction(next(df_iter)))
-
-    while True:
-        tx = Transaction(next(df_iter))
-        bar.update(tx)
-        if bar.ticks >= sep:
+        if txs_iter.peek().date < date:
+            bar = Bar(next(txs_iter), start=date)
+            while txs_iter.peek().date < date:
+                tx = next(txs_iter)
+                bar.update(tx)
             bar.close(tx)
             bars.append(bar)
-            try:
-                bar = Bar(Transaction(next(df_iter)))
-            except StopIteration:
-                return bars
+    return bars
+
+
+def tick_bars(txs, sep):
+    txs_iter = peekable(iter(txs))
+
+    bars = []
+
+    while True:
+        bar = Bar(next(txs_iter))
+        while bar.ticks < sep:
+            tx = next(txs_iter)
+            bar.update(tx)
+        bar.close(tx)
+        bars.append(bar)
+    return bars
 
 
 # Takes in a series of prices, a threshold for 
