@@ -34,67 +34,68 @@ class Bar:
         self.start = tx.date
         self.txs = [tx]
     
-    def update(tx, close=False):
+    def update(tx):
         if tx.rate > self.high:
             self.high = tx.rate
         elif tx.rate < self.low:
             self.low = tx.rate
         self.volume += float(tx.amount)
-        if not close:
-            self.ticks += 1
-            self.txs.append(tx)
+        self.ticks += 1
+        self.txs.append(tx)
 
     def close(tx):
         self.close = tx.rate
         self.end = tx.date
-        self.update(tx, True)
 
 
+def time_bars(txs, sep_secs):
+    txs_iter = iter(txs)
 
-
-def time_bars(df, sep_secs):
-    df_iter = peekable(df.itertuples())
+    init_date = txs[0].date
+    end_date = txs[-1].date
+    date = init_date
+    while date < end_date: 
+        date = date + dt.timedelta(seconds=sep_secs)
+        bar_dates.append(date)
 
     bars = []
-    tx = Transaction(df_iter.peek())
     bar = Bar(tx)
 
-    while True:
-        if tx.date > bar.start + dt.timedelta(seconds=sep_secs):
+    for start in bardates:
+
+        tx = next(txs_iter)
+        bar = Bar(tx)
+
+        
+        while 
+        if  > bar.start + dt.timedelta(seconds=sep_secs):
             bar.close(tx)
             bars.append(bar)
             try:
-                bar = Bar(Transaction(df_iter.peek()))
+                continue
             except StopIteration:
                 bars.append(bar)
                 return bars
-        else:
-            bar.update(tx)
-
         tx = Transaction(next(df_iter))
-
+        bar.update(tx)
 
 
 def tick_bars(df, sep):
-    df_iter = peekable(df.itertuples())
+    df_iter = df.itertuples()
 
     bars = []
-    tx = Transaction(df_iter
+    bar = Bar(Transaction(next(df_iter)))
+
     while True:
-        row = next(df_iter)
-        vol += float(row.amount)
-        if ix > barstartix + sep:
-            bar = {'start':barstarttime,
-                    'end':row.date,
-                    'open':open_rate,
-                    'close':row.rate,
-                    'volume':vol}
+        tx = Transaction(next(df_iter))
+        bar.update(tx)
+        if bar.ticks >= sep:
+            bar.close(tx)
             bars.append(bar)
-            vol = 0
             try:
-                open_rate = df_iter.peek().rate
+                bar = Bar(Transaction(next(df_iter)))
             except StopIteration:
-                return pd.DataFrame(bars)
+                return bars
 
 
 # Takes in a series of prices, a threshold for 
@@ -105,6 +106,7 @@ def imbalance_bars(df, counter_threshold,
        T_EMA_span, b_EMA_span):
     
     bars = []
+
     imbalance = 0
     T_EMA_mult = 2/(T_EMA_span + 1)
     E_b_EMA_mult = 2/(b_EMA_span + 1)
