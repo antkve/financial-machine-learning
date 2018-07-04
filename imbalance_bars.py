@@ -2,7 +2,7 @@ from poloniex import Poloniex
 import pandas as pd
 from numpy import sign
 from more_itertools import peekable
-import datetime
+import datetime as dt
 import dateutil.parser as dp
 import matplotlib.pyplot as plt
 
@@ -17,15 +17,15 @@ def get_trade_hist(polo, currencypair, startiso, endiso):
         )[::-1]
     return pd.DataFrame(hist)
 
+
 class Transaction:
     def __init__(row, dateformat="%Y-%m-%d %H:%M:%s")
         self.rate = float(row.rate)
-        datetime.strptime(row.date, dateformat)
+        self.date = dt.strptime(row.date, dateformat)
         self.amount = float(row.amount)
         self.type = row.type
+        self.total = float(row.total)
         
-        columns=['amount', 'type', 'globalTradeID', 
-            'date', 'rate', 'tradeID', 'total']
 
 class Bar:
     def __init__(self, tx):
@@ -40,10 +40,13 @@ class Bar:
         elif tx.rate < self.low:
             self.low = tx.rate
         self.volume += float(tx.amount)
-        self.ticks += 1
+        if not close:
+            self.ticks += 1
+            self.txs.append(tx)
 
     def close(tx):
         self.close = tx.rate
+        self.end = tx.date
         self.update(tx, True)
 
 
@@ -53,31 +56,30 @@ def time_bars(df, sep_secs):
     df_iter = peekable(df.itertuples())
 
     bars = []
-    bar = Bar(df_iter.peek())
+    tx = Transaction(df_iter.peek())
+    bar = Bar(tx)
 
     while True:
-        row = next(df_iter)
-        bar.update(row)
-        
-        date = datetime.strptime(row.date, "%Y-%m-%d %H:%M:%s") 
-        if date > barstarttime + datetime.timedelta(seconds=sep_secs):
-            bar.close(row)
+        if tx.date > bar.start + dt.timedelta(seconds=sep_secs):
+            bar.close(tx)
             bars.append(bar)
-            vol = 0
             try:
-                peeked = df_iter.peek()
-                open_rate, barstarttime = peeked.rate, peeked.date
-                high = low = open_rate
+                bar = Bar(Transaction(df_iter.peek()))
             except StopIteration:
-                return pd.DataFrame(bars)
+                bars.append(bar)
+                return bars
+        else:
+            bar.update(tx)
+
+        tx = Transaction(next(df_iter))
 
 
 
 def tick_bars(df, sep):
-    bars = []
     df_iter = peekable(df.itertuples())
-    barstarttime = datetime.strptime(df['date'][0], "%Y-%m-%d %H:%M:%s")
-    open_rate = df['rate'][0]
+
+    bars = []
+    tx = Transaction(df_iter
     while True:
         row = next(df_iter)
         vol += float(row.amount)
@@ -137,8 +139,8 @@ def imbalance_bars(df, counter_threshold,
         vol += float(row.amount)
 
         if abs(imbalance) > T_EMA * abs((2 * E_b_EMA - 1)):
-            bar = {'start':datetime.strptime(start, "%Y-%m-%d %H:%M:%s"),
-                    'end':datetime.strptime(row.date, "%Y-%m-%d %H:%M:%s")),
+            bar = {'start':dt.strptime(start, "%Y-%m-%d %H:%M:%s"),
+                    'end':dt.strptime(row.date, "%Y-%m-%d %H:%M:%s")),
                     'span':T,
                     'open':open_curr,
                     'close':rate,
