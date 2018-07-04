@@ -17,52 +17,51 @@ def get_trade_hist(polo, currencypair, startiso, endiso):
         )[::-1]
     return pd.DataFrame(hist)
 
+class Transaction:
+    def __init__(row, dateformat="%Y-%m-%d %H:%M:%s")
+        self.rate = float(row.rate)
+        datetime.strptime(row.date, dateformat)
+        self.amount = float(row.amount)
+        self.type = row.type
+        
+        columns=['amount', 'type', 'globalTradeID', 
+            'date', 'rate', 'tradeID', 'total']
 
 class Bar:
-    def __init__(self, row):
-        self.open = self.high = self.low = row.rate
-        self.volume = 0
-        self.start = row.date
+    def __init__(self, tx):
+        self.open = self.high = self.low = tx.rate
+        self.volume = self.ticks = 0
+        self.start = tx.date
+        self.txs = [tx]
     
-    def __dict:
-        return {key:value for key, value in self.__dict__.items() 
-                if not key.startswith('__') and not callable(key)}
+    def update(tx, close=False):
+        if tx.rate > self.high:
+            self.high = tx.rate
+        elif tx.rate < self.low:
+            self.low = tx.rate
+        self.volume += float(tx.amount)
+        self.ticks += 1
 
-    def update(row):
-        if row.rate > self.high:
-            self.high = row.rate
-        elif row.rate < self.low:
-            self.low = row.rate
-        self.volume += float(row.amount)
-
-    def close(row):
-        self.close = row.rate
-        self.update(row)
+    def close(tx):
+        self.close = tx.rate
+        self.update(tx, True)
 
 
 
 
 def time_bars(df, sep_secs):
-    bars = []
     df_iter = peekable(df.itertuples())
+
+    bars = []
     bar = Bar(df_iter.peek())
 
-    open_rate = high = low = df['rate'][0]
     while True:
         row = next(df_iter)
-        
-        vol += float(row.amount)
-        if row.rate > high: high = row.rate 
-        elif row.rate < low: low = row.rate
+        bar.update(row)
         
         date = datetime.strptime(row.date, "%Y-%m-%d %H:%M:%s") 
         if date > barstarttime + datetime.timedelta(seconds=sep_secs):
-            bar = {'start':barstarttime,
-                    'end':row.date,
-                    'open':open_rate,
-                    'high':high
-                    'close':row.rate,
-                    'volume':vol}
+            bar.close(row)
             bars.append(bar)
             vol = 0
             try:
