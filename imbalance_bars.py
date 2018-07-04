@@ -30,22 +30,24 @@ def imbalance_bars(df, counter_threshold,
     E_b_EMA_mult = 2/(b_EMA_span + 1)
     prev_rate = float(df['rate'].iloc[0])
     E_b_EMA = 0.5
-    T_EMA = 20
-    T = 0
-
+    T_EMA = 10
+    T = 10
     start_curr = df['date'].values[0]
     rate = open_curr = float(df['rate'].values[0])
     vol_curr = 0
     diff = 0
+    stop = False
 
     df_iter = peekable(df.itertuples())
 
     while True:
-        row = next(df_iter)
+        try:
+            row = next(df_iter)
+        except StopIteration: return pd.DataFrame(bars)
+        print(row.date)
         diff = float(row.rate) - rate
         rate = float(row.rate)
         
-        print(diff)
         if abs(diff) > counter_threshold * rate:
             b = sign(diff)
         else:
@@ -67,21 +69,15 @@ def imbalance_bars(df, counter_threshold,
                     'close':rate,
                     'volume':vol_curr}
             bars.append(bar)   
-            print("E_b: {}".format(E_b_EMA))
-            print("E_T: {}".format(T_EMA))
 
             # Initialize for next bar
-            vol_curr = 0
-            T = 0
 
             T_EMA = (T - T_EMA) * T_EMA_mult + T_EMA
-            try:
-                start_curr = df_iter.peek().date
-            except StopIteration:
-                return pd.DataFrame(bars)
+            T = 0
+            vol_curr = 0
+            start_curr = df_iter.peek().date
             open_curr = df_iter.peek().rate
             imbalance = 0
-            print("rate: {}, prev_close: {}".format(rate, bars[-1]['close']))
             
 
         
@@ -92,12 +88,12 @@ def __main__(currencypair, start, end):
         columns=['amount', 'type', 'globalTradeID', 
             'date', 'rate', 'tradeID', 'total']
         )
-    bars = imbalance_bars(df, 0, 10, 10)
     print(df)
-    print(bars)
+    bars = imbalance_bars(df, 0.001, 10, 10)
     plt.plot(df['date'], [float(rate) for rate in df['rate']], 'r--')
+    print(bars)
     plt.plot(bars['start'], [float(open) for open in bars['open']], 'bs')
     plt.show()
 
 
-__main__('BTC_ETH', '2017-05-02T04:04:00', '2017-05-02T04:10:00')
+__main__('BTC_ETH', '2017-05-02T04:04:00', '2017-05-02T04:05:00')
