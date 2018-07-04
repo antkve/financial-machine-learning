@@ -5,6 +5,7 @@ from more_itertools import peekable
 import datetime as dt
 import dateutil.parser as dp
 import matplotlib.pyplot as plt
+import finance
 
 
 def get_trade_hist(polo, currencypair, startiso, endiso):
@@ -18,38 +19,8 @@ def get_trade_hist(polo, currencypair, startiso, endiso):
     return pd.DataFrame(hist)
 
 
-class Transaction:
-    def __init__(row, dateformat="%Y-%m-%d %H:%M:%s")
-        self.rate = float(row.rate)
-        self.date = dt.strptime(row.date, dateformat)
-        self.amount = float(row.amount)
-        self.type = row.type
-        self.total = float(row.total)
-        
-
-class Bar:
-    def __init__(self, tx):
-        self.open = self.high = self.low = tx.rate
-        self.volume = self.ticks = 0
-        self.start = tx.date
-        self.txs = [tx]
-    
-    def update(tx):
-        if tx.rate > self.high:
-            self.high = tx.rate
-        elif tx.rate < self.low:
-            self.low = tx.rate
-        self.volume += float(tx.amount)
-        self.ticks += 1
-        self.txs.append(tx)
-
-    def close(tx):
-        self.close = tx.rate
-        self.end = tx.date
-
-
-def time_bars(txs, sep_secs):
-    txs_iter = iter(txs)
+def time_bars(txs, start, sep_secs):
+    txs_iter = peekable(iter(txs))
 
     init_date = txs[0].date
     end_date = txs[-1].date
@@ -59,25 +30,20 @@ def time_bars(txs, sep_secs):
         bar_dates.append(date)
 
     bars = []
-    bar = Bar(tx)
+    tx = next(txs_iter)
 
-    for start in bardates:
+    for end in bardates:
 
+        if tx.date > end:
+            continue
+
+        while tx.date < end:
+            bar.update(tx)
+            tx = next(txs_iter)
+        bar.close(tx)
+        bars.append(bar)
         tx = next(txs_iter)
         bar = Bar(tx)
-
-        
-        while 
-        if  > bar.start + dt.timedelta(seconds=sep_secs):
-            bar.close(tx)
-            bars.append(bar)
-            try:
-                continue
-            except StopIteration:
-                bars.append(bar)
-                return bars
-        tx = Transaction(next(df_iter))
-        bar.update(tx)
 
 
 def tick_bars(df, sep):
