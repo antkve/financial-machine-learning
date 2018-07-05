@@ -22,7 +22,7 @@ class Bar:
         self.txs = []
         self.update(tx)
 
-    def update(tx):
+    def update(self, tx):
         if tx.rate > self.high:
             self.high = tx.rate
         elif tx.rate < self.low:
@@ -31,7 +31,7 @@ class Bar:
         self.ticks += 1
         self.txs.append(tx)
 
-    def close(tx):
+    def finish(self, tx):
         self.close = tx.rate
         self.end = tx.date
 
