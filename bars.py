@@ -101,6 +101,7 @@ def imbalance_bars(txs, counter_threshold,
 
             bar.close(tx)
             bars.append(bar)
+
         catch StopIteration:
             bar.update(tx)
             bar.close(tx)
