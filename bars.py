@@ -27,15 +27,20 @@ def time_bars(txs, start, sep_secs):
     date = txs[0].date
     bars = []
     while date < end_date: 
-        date = date + dt.timedelta(seconds=sep_secs)
-        if txs_iter.peek().date < date and date < end_date:
-            bar = Bar(next(txs_iter), start=date)
-            while txs_iter.peek().date < date:
-                tx = next(txs_iter)
+        try:
+            date = date + dt.timedelta(seconds=sep_secs)
+            if txs_iter.peek().date < date and date < end_date:
+                bar = Bar(next(txs_iter), start=date)
+                while txs_iter.peek().date < date:
+                    tx = next(txs_iter)
+                    bar.update(tx)
+                bar.close(tx)
+                bars.append(bar)
+            except StopIteration:
                 bar.update(tx)
-            bar.close(tx)
-            bars.append(bar)
-    return bars
+                bar.close(tx)
+                bars.append(bar)
+                return bars
 
 
 def tick_bars(txs, sep):
@@ -78,10 +83,8 @@ def imbalance_bars(txs, counter_threshold,
     txs_iter = peekable(iter(txs))
 
     while True:
-        
         try:
             imbalance = 0
-
             bar = Bar(next(txs_iter))
 
             while abs(imbalance) <= T_EMA * abs((2 * E_b_EMA - 1)):
@@ -101,16 +104,13 @@ def imbalance_bars(txs, counter_threshold,
 
             bar.close(tx)
             bars.append(bar)
+
         catch StopIteration:
             bar.update(tx)
             bar.close(tx)
 
-
-
-           
-
         
-def __main__(currencypair, start, end):
+def graph(currencypair, start, end):
     polo = Poloniex()
     df = pd.DataFrame(
         get_trade_hist(polo, 'BTC_ETH', start, end),
@@ -123,4 +123,6 @@ def __main__(currencypair, start, end):
     plt.plot(bars['start'], [float(open) for open in bars['open']], 'r')
     plt.show()
 
-__main__('BTC_ETH', '2017-05-03T04:00:00', '2017-05-03T04:30:00')
+
+if __name__ == '__main__':
+    graph('BTC_ETH', '2017-05-03T04:00:00', '2017-05-03T04:30:00')
