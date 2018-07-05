@@ -5,8 +5,7 @@ from more_itertools import peekable
 import datetime as dt
 import dateutil.parser as dp
 import matplotlib.pyplot as plt
-import finance
-from matplotlib.finance import candlestick_ohlc
+from finance import Bar, Transaction
 
 
 def get_trade_hist(polo, currencypair, startiso, endiso):
@@ -17,13 +16,15 @@ def get_trade_hist(polo, currencypair, startiso, endiso):
             start=parsed_start.strftime('%s'),
             end=parsed_end.strftime('%s'),
         )[::-1]
-    return pd.DataFrame(hist)
+    ret = [Transaction(row) for row in hist]
+    return ret
 
 
 def time_bars(txs, start, sep_secs):
     txs_iter = peekable(iter(txs))
 
     end_date = txs[-1].date
+    print(txs)
     date = txs[0].date
     bars = []
     while date < end_date: 
@@ -36,11 +37,11 @@ def time_bars(txs, start, sep_secs):
                     bar.update(tx)
                 bar.close(tx)
                 bars.append(bar)
-            except StopIteration:
-                bar.update(tx)
-                bar.close(tx)
-                bars.append(bar)
-                return bars
+        except StopIteration:
+            bar.update(tx)
+            bar.close(tx)
+            bars.append(bar)
+            return bars
 
 
 def tick_bars(txs, sep):
@@ -65,62 +66,58 @@ def tick_bars(txs, sep):
 
 # Takes in a series of prices, a threshold for 
 # the imbalance counter trigger, and the spans
-# for each EMA. Returns a DataFrame of bars.
+# for each EMA. Returns a list of bars.
 
 def imbalance_bars(txs, counter_threshold,
        T_EMA_span, b_EMA_span):
-    
     bars = []
-
     T_EMA_mult = 2/(T_EMA_span + 1)
     E_b_EMA_mult = 2/(b_EMA_span + 1)
     E_b_EMA = 0.5
     T_EMA = 20
-    
-    prev_rate = txs[0]['rate']
+    prev_rate = txs[0].rate
     diff = 0
-
-    txs_iter = peekable(iter(txs))
+    txs_iter = iter(txs)
 
     while True:
         try:
             imbalance = 0
             bar = Bar(next(txs_iter))
-
             while abs(imbalance) <= T_EMA * abs((2 * E_b_EMA - 1)):
                 tx = next(txs_iter)
                 bar.update(tx)
-
                 diff = tx.rate - prev_rate
                 if abs(diff) > counter_threshold * rate:
                     b = sign(diff)
                 else:
                     b = 0
                 imbalance += b
-            
+                prev_rate = tx.rate
                 E_b_EMA = ((1 + b)/2 - E_b_EMA) * E_b_EMA_mult + E_b_EMA
             
             T_EMA = (bar.ticks - T_EMA) * T_EMA_mult + T_EMA
-
             bar.close(tx)
             bars.append(bar)
 
-        catch StopIteration:
+        except StopIteration:
             bar.update(tx)
             bar.close(tx)
+            bars.append(bar)
+            return bars
 
         
 def graph(currencypair, start, end):
     polo = Poloniex()
-    df = pd.DataFrame(
-        get_trade_hist(polo, 'BTC_ETH', start, end),
-        columns=['amount', 'type', 'globalTradeID', 
-            'date', 'rate', 'tradeID', 'total']
-        )
-    print(df)
-    bars = imbalance_bars(df, 0.001, 10, 10, 20)
-    plt.plot(df['date'], [float(rate) for rate in df['rate']], 'b')
-    plt.plot(bars['start'], [float(open) for open in bars['open']], 'r')
+    txs = get_trade_hist(polo, 'BTC_ETH', start, end),
+    imbalancebars = imbalance_bars(txs, 0.001, 10, 10)
+    timebars = time_bars(txs, start, 10)
+    imbalance_y = [bar.open for bar in bars]
+    imbalance_x = [bar.start for bar in bars]
+    time_y = [bar.open for bar in bars]
+    time_x = [bar.start for bar in bars]
+
+    plt.plot(imbalance_x, imbalance_y, 'b')
+    plt.plot(time_x, time_y, 'r')
     plt.show()
 
 
