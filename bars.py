@@ -28,7 +28,7 @@ def time_bars(txs, start, sep_secs):
     bars = []
     while date < end_date: 
         date = date + dt.timedelta(seconds=sep_secs)
-        if txs_iter.peek().date < date:
+        if txs_iter.peek().date < date and date < end_date:
             bar = Bar(next(txs_iter), start=date)
             while txs_iter.peek().date < date:
                 tx = next(txs_iter)
@@ -67,13 +67,11 @@ def imbalance_bars(txs, counter_threshold,
     
     bars = []
 
-    imbalance = 0
     T_EMA_mult = 2/(T_EMA_span + 1)
     E_b_EMA_mult = 2/(b_EMA_span + 1)
     E_b_EMA = 0.5
-    T_EMA = T = 20
+    T_EMA = 20
     
-    start = txs[0]['date']
     prev_rate = txs[0]['rate']
     diff = 0
 
@@ -81,32 +79,35 @@ def imbalance_bars(txs, counter_threshold,
 
     while True:
         
-
-        
-        imbalance = 0
-
-        bar = Bar(next(txs_iter))
-
-        while abs(imbalance) <= T_EMA * abs((2 * E_b_EMA - 1)):
-            tx = next(txs_iter)
-            diff = tx.rate - prev_rate
-            if abs(diff) > counter_threshold * rate:
-                b = sign(diff)
-            else:
-                b = 0
-            imbalance += b
-        
-            E_b_EMA = ((1 + b)/2 - E_b_EMA) * E_b_EMA_mult + E_b_EMA
-
-            # Initialize for next bar
-
-            T_EMA = (T - T_EMA) * T_EMA_mult + T_EMA
-            T = 0
-            vol = 0
-            start = df_iter.peek().date
-            open_curr = df_iter.peek().rate
+        try:
             imbalance = 0
+
+            bar = Bar(next(txs_iter))
+
+            while abs(imbalance) <= T_EMA * abs((2 * E_b_EMA - 1)):
+                tx = next(txs_iter)
+                bar.update(tx)
+
+                diff = tx.rate - prev_rate
+                if abs(diff) > counter_threshold * rate:
+                    b = sign(diff)
+                else:
+                    b = 0
+                imbalance += b
             
+                E_b_EMA = ((1 + b)/2 - E_b_EMA) * E_b_EMA_mult + E_b_EMA
+            
+            T_EMA = (bar.ticks - T_EMA) * T_EMA_mult + T_EMA
+
+            bar.close(tx)
+            bars.append(bar)
+        catch StopIteration:
+            bar.update(tx)
+            bar.close(tx)
+
+
+
+           
 
         
 def __main__(currencypair, start, end):
