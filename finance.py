@@ -2,12 +2,12 @@ import datetime as dt
 
 
 class Transaction:
-    def __init__(row, dateformat="%Y-%m-%d %H:%M:%s")
-        self.rate = float(row.rate)
-        self.date = dt.strptime(row.date, dateformat)
-        self.amount = float(row.amount)
-        self.type = row.type
-        self.total = float(row.total)
+    def __init__(self, row, dateformat="%Y-%m-%d %H:%M:%S"):
+        self.rate = float(row['rate'])
+        self.date = dt.datetime.strptime(row['date'], dateformat)
+        self.amount = float(row['amount'])
+        self.type = row['type']
+        self.total = float(row['total'])
 
 
 class Bar:
