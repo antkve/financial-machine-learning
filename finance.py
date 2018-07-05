@@ -19,14 +19,15 @@ class Bar:
             self.start = start
         else:
             self.start = tx.date
-        self.txs = [tx]
+        self.txs = []
+        self.update(tx)
 
     def update(tx):
         if tx.rate > self.high:
             self.high = tx.rate
         elif tx.rate < self.low:
             self.low = tx.rate
-        self.volume += float(tx.amount)
+        self.volume += tx.amount
         self.ticks += 1
         self.txs.append(tx)
 

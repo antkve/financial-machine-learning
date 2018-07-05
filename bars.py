@@ -39,25 +39,30 @@ def time_bars(txs, start, sep_secs):
 
 
 def tick_bars(txs, sep):
-    txs_iter = peekable(iter(txs))
+    txs_iter = iter(txs)
 
     bars = []
 
     while True:
-        bar = Bar(next(txs_iter))
-        while bar.ticks < sep:
-            tx = next(txs_iter)
+        try:
+            bar = Bar(next(txs_iter))
+            while bar.ticks < sep:
+                tx = next(txs_iter)
+                bar.update(tx)
+            bar.close(tx)
+            bars.append(bar)
+        except StopIteration:
             bar.update(tx)
-        bar.close(tx)
-        bars.append(bar)
-    return bars
+            bar.close(tx)
+            bars.append(bar)
+            return bars
 
 
 # Takes in a series of prices, a threshold for 
 # the imbalance counter trigger, and the spans
 # for each EMA. Returns a DataFrame of bars.
 
-def imbalance_bars(df, counter_threshold,
+def imbalance_bars(txs, counter_threshold,
        T_EMA_span, b_EMA_span):
     
     bars = []
@@ -65,44 +70,33 @@ def imbalance_bars(df, counter_threshold,
     imbalance = 0
     T_EMA_mult = 2/(T_EMA_span + 1)
     E_b_EMA_mult = 2/(b_EMA_span + 1)
-    prev_rate = float(df['rate'].iloc[0])
     E_b_EMA = 0.5
     T_EMA = T = 20
-    start = df['date'].values[0]
-    rate = open_curr = float(df['rate'].values[0])
-    vol = 0
+    
+    start = txs[0]['date']
+    prev_rate = txs[0]['rate']
     diff = 0
-    stop = False
 
-    df_iter = peekable(df.itertuples())
+    txs_iter = peekable(iter(txs))
 
     while True:
-        try:
-            row = next(df_iter)
-        except StopIteration: return pd.DataFrame(bars)
-        diff = float(row.rate) - rate
-        rate = float(row.rate)
         
-        if abs(diff) > counter_threshold * rate:
-            b = sign(diff)
-        else:
-            b = 0
-        
-        imbalance += b
-        E_b_EMA = ((1 + b)/2 - E_b_EMA) * E_b_EMA_mult + E_b_EMA
 
         
-        T += 1
-        vol += float(row.amount)
+        imbalance = 0
 
-        if abs(imbalance) > T_EMA * abs((2 * E_b_EMA - 1)):
-            bar = {'start':dt.strptime(start, "%Y-%m-%d %H:%M:%s"),
-                    'end':dt.strptime(row.date, "%Y-%m-%d %H:%M:%s")),
-                    'span':T,
-                    'open':open_curr,
-                    'close':rate,
-                    'volume':vol}
-            bars.append(bar)   
+        bar = Bar(next(txs_iter))
+
+        while abs(imbalance) <= T_EMA * abs((2 * E_b_EMA - 1)):
+            tx = next(txs_iter)
+            diff = tx.rate - prev_rate
+            if abs(diff) > counter_threshold * rate:
+                b = sign(diff)
+            else:
+                b = 0
+            imbalance += b
+        
+            E_b_EMA = ((1 + b)/2 - E_b_EMA) * E_b_EMA_mult + E_b_EMA
 
             # Initialize for next bar
 
